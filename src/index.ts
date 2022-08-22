@@ -49,17 +49,26 @@ export default class PGMutexLock {
         })()
 
         this.client = createClient(database);
-        this.client.connect()
-        .then(() => initTable(this.client, dbName))
-        .then((oid) => {
-            this.databaseId = oid;
-            this.isConnected = true;
-            this.emitter.emit(EVENTS.CONNECTED);
+        
+        
+        const connect = () => {
+            this.client.connect()
+            .then(() => initTable(this.client, dbName))
+            .then((oid) => {
+                this.databaseId = oid;
+                this.isConnected = true;
+                this.emitter.emit(EVENTS.CONNECTED);
+            })
+            .catch((err)=>{
+                console.error(err);
+                this.emitter.emit(EVENTS.CONNECT_FAILED, err);
+            })
+        }
+        this.client.on('end', () => {
+          this.isConnected = false
+          connect()
         })
-        .catch((err)=>{
-            console.error(err);
-            this.emitter.emit(EVENTS.CONNECT_FAILED, err);
-        })
+        connect()
 
         this.end = this.end.bind(this)
         this.acquireLock = this.acquireLock.bind(this)
